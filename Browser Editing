@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Certificate PDF Editor</title>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+
+<h2>COI Editor</h2>
+
+<label>Date (MM/DD/YYYY):</label><br>
+<input type="text" id="date" placeholder="MM/DD/YYYY"><br><br>
+
+<label>Additional Insured:</label><br>
+<textarea id="description" rows="5" cols="60" placeholder="Additional Insured..."></textarea><br><br>
+
+<label>Certificate Holder:</label><br>
+<textarea id="holder" rows="3" cols="60" placeholder="Certificate holder name..."></textarea><br><br>
+
+<label>Choose PDF (optional):</label><br>
+<input type="file" id="pdfFile"><br><br>
+
+<button id="download">Download Edited PDF</button>
+
+<script>
+document.getElementById('download').addEventListener('click', async () => {
+  try {
+    // Load PDF (uploaded or default)
+    let existingPdfBytes;
+    const fileInput = document.getElementById('pdfFile').files[0];
+    if (fileInput) {
+      existingPdfBytes = await fileInput.arrayBuffer();
+    } else {
+      const pdfUrl = 'https://raw.githubusercontent.com/chuckccpuls-dotcom/COI/main/COI2.pdf';
+      const response = await fetch(pdfUrl);
+      if (!response.ok) throw new Error('Failed to fetch default PDF');
+      existingPdfBytes = await response.arrayBuffer();
+    }
+
+    // Load PDF
+    const pdfDoc = await PDFLib.PDFDocument.load(existingPdfBytes);
+    const page = pdfDoc.getPages()[0];
+
+    // Embed Helvetica font
+    const helveticaFont = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+
+    // Font size and line height
+    const fontSize = 8; 
+    const lineHeight = 10;
+
+    // Draw Date (top right)
+    page.drawText(document.getElementById('date').value, {
+      x: 530,
+      y: 740,
+      font: helveticaFont,
+      size: fontSize,
+      color: PDFLib.rgb(0,0,0)
+    });
+
+    // Draw Description (middle, multi-line, patterned like bottom)
+    const middleText = document.getElementById('description').value;
+    const middleLines = middleText.split('\n');
+    let middleY = 182; // previous y position
+    middleLines.forEach(line => {
+      page.drawText(line, {
+        x: 50,
+        y: middleY,
+        font: helveticaFont,
+        size: fontSize,
+        color: PDFLib.rgb(0,0,0)
+      });
+      middleY -= lineHeight; // same spacing as bottom
+    });
+
+    // Draw Certificate Holder (bottom, multi-line)
+    const holderText = document.getElementById('holder').value;
+    const holderLines = holderText.split('\n');
+    let cursorY = 84; 
+    holderLines.forEach(line => {
+      page.drawText(line, {
+        x: 50,
+        y: cursorY,
+        font: helveticaFont,
+        size: fontSize,
+        color: PDFLib.rgb(0,0,0)
+      });
+      cursorY -= lineHeight;
+    });
+
+    // Save PDF and trigger download
+    const pdfBytes = await pdfDoc.save();
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const blobUrl = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = 'COI Copy.pdf';
+    a.click();
+    URL.revokeObjectURL(blobUrl);
+
+  } catch (err) {
+    alert('Error: ' + err.message);
+    console.error(err);
+  }
+});
+</script>
+
+</body>
+</html>
